@@ -150,6 +150,7 @@ AddEventHandler('esx_uber:startDestination', function ()
     end
   end
   
+  --TODO: Change the client payment call.
   TriggerServerEvent('esx_uber:pay',payment)
   TriggerEvent('showNotify', "You got: ~g~+" .. payment .. " ~w~~ sucessful delivery")
 
