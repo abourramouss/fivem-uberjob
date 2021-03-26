@@ -12,6 +12,7 @@ local Keys = {
 
 ESX = nil
 payment = 1000
+deliveryID = 0
 
   businessLocations = { --Business locations where the uber driver will be recolecting the packages, any coordinate must be a float!!
   [1] = {["x"] = -53.61, ["y"] = -1757.00, ["z"] = 29.0, ["title"]="24/7 Uber Delivery"}
@@ -19,7 +20,7 @@ payment = 1000
 
  deliveryLocations = {  --- Door cords to leave the packages
     [1] = {["x"] = -53.61, ["y"] = -1757.00, ["z"] = 29.0, ["title"]="24/7 Uber Delivery"}
-}
+  }
 
   Citizen.CreateThread(function()
       while ESX == nil do
@@ -27,6 +28,11 @@ payment = 1000
           TriggerEvent('esx:getSharedObject', function (obj) ESX = obj end)
       end
   end)
+
+
+
+
+  
 
 RegisterNetEvent('showNotify')
 
@@ -62,15 +68,10 @@ function Draw3DText2(x,y,z,text)
   DrawRect(_x,_y+0.0125, 0.015+ factor, 0.03, 41, 11, 41, 100)
 end
 
-
-
-
-
 RegisterNetEvent('esx_uber:startDestination')
-AddEventHandler('esx_uber:startDestination', function ()
+AddEventHandler('esx_uber:startDestination', function (selectedDest)
   --info about the table size for debugin
   local arrSize = tablelength(businessLocations) 
-  local selectedDest = math.random(1,arrSize)   
   --Debugging
   uberdeliveryblip = AddBlipForCoord(businessLocations[selectedDest]["x"],  businessLocations[selectedDest]["y"],  businessLocations[selectedDest]["z"])
   SetBlipSprite(uberdeliveryblip,1)
@@ -80,42 +81,9 @@ AddEventHandler('esx_uber:startDestination', function ()
   AddTextComponentString(businessLocations[selectedDest]["title"])
   EndTextCommandSetBlipName(uberdeliveryblip)
   SetNewWaypoint(businessLocations[selectedDest]["x"],  businessLocations[selectedDest]["y"])
-        
-  --Do dis 2 times: implement it on a function
+end)
 
-  --Pickup
-        local PackageDeliveryObject = CreateObject(GetHashKey("prop_cs_cardbox_01"), businessLocations[selectedDest]["x"],  businessLocations[selectedDest]["y"],businessLocations[selectedDest]["z"], true)
-        PlaceObjectOnGroundProperly(PackageDeliveryObject)
-          local hasActionStarted = true
-          while hasActionStarted do
-            Citizen.Wait(0)
-            local player = source
-            local ped = GetPlayerPed(player)
-            if GetDistanceBetweenCoords(GetEntityCoords(ped),businessLocations[selectedDest]["x"],  businessLocations[selectedDest]["y"],businessLocations[selectedDest]["z"],true) < 4.0 then
-              Draw3DText2(businessLocations[selectedDest]["x"],  businessLocations[selectedDest]["y"],businessLocations[selectedDest]["z"] + 0.3,  tostring("~w~~g~[E]~w~ Pick Up Package"))
-              if IsControlJustPressed(1,Keys["E"]) then
-                local plyPos = GetEntityCoords(ped, false)
-                TaskStartScenarioInPlace(PlayerPedId(), "PROP_HUMAN_BUM_BIN", 0, true)
-                Citizen.Wait(0)
-                exports["t0sic_loadingbar"]:StartDelayedFunction("PICKING UP...", math.random(5000,10000), function()
-                  ClearPedTasks(PlayerPedId(-1))
-                  DeleteObject(PackageDeliveryObject)
-                  RemoveBlip(uberdeliveryblip)
-                  takenpackage = true
-                  hasActionStarted = false
-                  end)
-              end
-            end
-          end
-        
-
---Delivery
-
-
-  arrSize = tablelength(deliveryLocations) 
-
-  selectedDest = math.random(1,arrSize)
-
+function createBlip(selectedDest)
   uberdeliveryblip = AddBlipForCoord(deliveryLocations[selectedDest]["x"],  deliveryLocations[selectedDest]["y"],  deliveryLocations[selectedDest]["z"])
   SetBlipSprite(uberdeliveryblip,1)
   SetBlipColour(uberdeliveryblip,16742399)
@@ -124,46 +92,81 @@ AddEventHandler('esx_uber:startDestination', function ()
   AddTextComponentString(deliveryLocations[selectedDest]["title"])
   EndTextCommandSetBlipName(uberdeliveryblip)
   SetNewWaypoint(deliveryLocations[selectedDest]["x"],  deliveryLocations[selectedDest]["y"])
-  
+
+  return uberdeliveryblip
+end
+
+
+function genericFunc(type,selectedDest,uberdeliveryblip)
+  local PackageDeliveryObject
+  if type == "PICKUP" then
+    PackageDeliveryObject = CreateObject(GetHashKey("prop_cs_cardbox_01"), deliveryLocations[selectedDest]["x"],  deliveryLocations[selectedDest]["y"],deliveryLocations[selectedDest]["z"], true)
+    PlaceObjectOnGroundProperly(PackageDeliveryObject)
+  end
+
   local hasActionStarted = true
-  while hasActionStarted do
-    Citizen.Wait(0)
-    local player = source
-    local ped = GetPlayerPed(player)
-    if GetDistanceBetweenCoords(GetEntityCoords(ped),deliveryLocations[selectedDest]["x"],  deliveryLocations[selectedDest]["y"],deliveryLocations[selectedDest]["z"],true) < 4.0 then
-      Draw3DText2(businessLocations[selectedDest]["x"],  deliveryLocations[selectedDest]["y"],deliveryLocations[selectedDest]["z"] + 0.3,  tostring("~w~~g~[E]~w~ Drop Package"))
-      if IsControlJustPressed(1,Keys["E"]) then
-        local plyPos = GetEntityCoords(ped, false)
-        TaskStartScenarioInPlace(PlayerPedId(), "PROP_HUMAN_BUM_BIN", 0, true)
-        Citizen.Wait(0)
-        exports["t0sic_loadingbar"]:StartDelayedFunction("DELIVERING...", math.random(5000,10000), function()
-          ClearPedTasks(PlayerPedId(-1))
-          local PackageDeliveryObject = CreateObject(GetHashKey("prop_cs_cardbox_01"), deliveryLocations[selectedDest]["x"],  deliveryLocations[selectedDest]["y"],deliveryLocations[selectedDest]["z"], true)
-          PlaceObjectOnGroundProperly(PackageDeliveryObject)
-          RemoveBlip(uberdeliveryblip)
-          takenpackage = true
-          hasActionStarted = false
-          Citizen.Wait(60000)     
-          DeleteObject(PackageDeliveryObject)  
-        end)
+    while hasActionStarted do
+      Citizen.Wait(0)
+      local player = source
+      local ped = GetPlayerPed(player)
+      if GetDistanceBetweenCoords(GetEntityCoords(ped),businessLocations[selectedDest]["x"],  businessLocations[selectedDest]["y"],businessLocations[selectedDest]["z"],true) < 4.0 then
+        Draw3DText2(businessLocations[selectedDest]["x"],  businessLocations[selectedDest]["y"],businessLocations[selectedDest]["z"] + 0.3,  tostring("~w~~g~[E]~w~" .. type .. " Package"))
+        if IsControlJustPressed(1,Keys["E"]) then
+          TaskStartScenarioInPlace(PlayerPedId(), "PROP_HUMAN_BUM_BIN", 0, true)
+          
+          if type == "PICKUP" then
+            exports["t0sic_loadingbar"]:StartDelayedFunction(type, 0, function(type)
+              takenpackage = true
+              hasActionStarted = false
+              Citizen.Wait(0)
+              ClearPedTasksImmediately(PlayerPedId(-1))
+              DeleteObject(PackageDeliveryObject)
+            end)
+          elseif type=="DELIVER" then
+            exports["t0sic_loadingbar"]:StartDelayedFunction(type, 0, function(type)
+              takenpackage = true
+              hasActionStarted = false
+              local PackageDeliveryObject = CreateObject(GetHashKey("prop_cs_cardbox_01"), deliveryLocations[selectedDest]["x"],  deliveryLocations[selectedDest]["y"],deliveryLocations[selectedDest]["z"], true)
+              PlaceObjectOnGroundProperly(PackageDeliveryObject)
+              Citizen.Wait(0)
+              ClearPedTasksImmediately(PlayerPedId(-1))
+              DeleteObject(PackageDeliveryObject)
+            end)
+          end
+          RemoveBlip(blip)
+
+        end
       end
     end
-  end
-  
-  --TODO: Change the client payment call.
-  TriggerServerEvent('esx_uber:pay',payment)
-  TriggerEvent('showNotify', "You got: ~g~+" .. payment .. " ~w~~ sucessful delivery")
+    return takenpackage
+end
 
+Citizen.CreateThread(function()
+while true do
+    local selectedDest = 1
+    uberdeliveryblip = createBlip(selectedDest)
+    local isTaken,isDelivered = false
+    isTaken = genericFunc("PICKUP",selectedDest,uberdeliveryblip)
+    
+    if isTaken then
+      isDelivered = genericFunc("DELIVER",selectedDest,uberdeliveryblip)
+      
+    end
+
+    if isDelivered then
+
+      deliveryID = deliveryID + 1;
+      TriggerServerEvent('esx_uber:delivery_complete',source,deliveryID)
+     
+    end
+  end
+end)
 
 
         
-end)
-
- RegisterCommand("uberJob", function()
-    
-    TriggerServerEvent('esx_joblisting:setJob','uber')
-    TriggerServerEvent('esx_uber:startWork')
-   
-  end, false)
+RegisterCommand("uberJob", function()
+  TriggerServerEvent('esx_joblisting:setJob','uber')
+  TriggerServerEvent('esx_uber:startWork')
+end, false)
 
  
