@@ -4,13 +4,6 @@ TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
 
 deliverHistory = {}
 
-businessLocations = { --Business locations where the uber driver will be recolecting the packages, any coordinate must be a float!!
-[1] = {["x"] = -53.61, ["y"] = -1757.00, ["z"] = 29.0, ["title"]="24/7 Uber Delivery"}
-}
-
-deliveryLocations = {  --- Door cords to leave the packages
-  [1] = {["x"] = 8.91, ["y"] = -242.82, ["z"] = 51.86}
-}
 
 RegisterNetEvent('esx_uber:delivery_complete')
 AddEventHandler('esx_uber:delivery_complete', function(user,delivery)
@@ -30,10 +23,9 @@ Citizen.CreateThread(function()
     while true do
         for k,v in pairs(deliverHistory) do
             if deliverHistory[k] ~= nil then
-                print(k.. " " .. deliverHistory[k] )
                 local xPlayer = ESX.GetPlayerFromId(k)
                 if xPlayer ~= nil then
-                    local totalPay= tonumber(deliverHistory[k]*1000)
+                    local totalPay= tonumber(deliverHistory[k]*Config.payment)
                     xPlayer.addMoney(totalPay)
                     TriggerClientEvent('showNotify', k,xPlayer.name .. ": ~b~Your deliveries just got paid! \nA total of: " .. totalPay .. " were added to your account" )
                     deliverHistory[k] = nil
